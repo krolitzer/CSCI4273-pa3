@@ -34,6 +34,7 @@ private:
     {
 	msglen = len;
 	msg_content = new char[len];
+	// could make this point to msg
 	memcpy(msg_content, msg, len);
     }
 
@@ -42,13 +43,14 @@ private:
             delete msg_content;
     }
 
-    void Message::msgAddHdr(char *hdr, size_t length)
-    {
-	char *new_msg_content;
+    void Message::msgAddHdr(char *hdr, size_t length) {
 
+	char *new_msg_content;
 	new_msg_content = new char[msglen + length];
-        memcpy(new_msg_content, hdr, length);
+    
+    memcpy(new_msg_content, hdr, length);
 	memcpy(new_msg_content + length, msg_content, msglen);
+	
 	delete msg_content;
 	msg_content = new_msg_content;
 	msglen += length;
