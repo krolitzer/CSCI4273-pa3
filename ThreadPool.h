@@ -31,14 +31,14 @@ ThreadPool::ThreadPool( )
 {
 	m_pool_size = DEFAULT_THREAD_COUNT;
 
-	cout << "ThreadPool created with %d threads." << endl;
+	cout << "ThreadPool created with " << m_pool_size << " threads." << endl;
 }
 
 ThreadPool::ThreadPool(size_t threadCount)
 {
 	m_pool_size = threadCount;
 
-	cout << "ThreadPool created with %d threads." << endl;
+	cout << "ThreadPool created with " << m_pool_size << " threads." << endl;
 }
 
 ThreadPool::~ThreadPool( )
