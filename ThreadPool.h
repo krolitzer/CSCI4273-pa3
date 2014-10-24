@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <iostream>
+#include <pthread.h>
 
 #define DEFAULT_THREAD_COUNT 10
 
@@ -21,29 +22,33 @@ class ThreadPool
 	    bool thread_avail( );
 
 	private:
-    	size_t m_pool_size;
-    	char *msg_content;
+    	size_t m_PoolSize;
+    	pthread_t* m_ThreadPool;
+
+
+    	//Thread struct
 
     	void initialize_pool( );
+    	void free_thread( /*pointer to thread struct*/);
 };
 
 ThreadPool::ThreadPool( )
+	:m_PoolSize(DEFAULT_THREAD_COUNT)
 {
-	m_pool_size = DEFAULT_THREAD_COUNT;
-
-	cout << "ThreadPool created with " << m_pool_size << " threads." << endl;
+	initialize_pool();
+	cout << "ThreadPool created with " << m_PoolSize << " threads." << endl;
 }
 
 ThreadPool::ThreadPool(size_t threadCount)
+	:m_PoolSize(threadCount)
 {
-	m_pool_size = threadCount;
-
-	cout << "ThreadPool created with " << m_pool_size << " threads." << endl;
+	initialize_pool();
+	cout << "ThreadPool created with " << m_PoolSize << " threads." << endl;
 }
 
 ThreadPool::~ThreadPool( )
 {
-    
+    delete m_ThreadPool;
 }
 
 int 
@@ -61,6 +66,12 @@ ThreadPool::thread_avail( )
 
 void
 ThreadPool::initialize_pool( )
+{
+	m_ThreadPool = new pthread_t[m_PoolSize];
+}
+
+void
+ThreadPool::free_thread( )
 {
 
 }
