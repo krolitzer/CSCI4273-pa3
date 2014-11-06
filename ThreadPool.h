@@ -74,6 +74,7 @@ ThreadPool::dispatch_thread(void dispatch_function(void*), void *arg)
 			if (m_ThreadStatus[m_ThreadPool[i]])
 			{
 				m_ThreadStatus[m_ThreadPool[i]]	= false;
+
 				//rc = pthread_create(&(m_ThreadPool[i]), NULL, dispatch_function, arg);
 			}
 
