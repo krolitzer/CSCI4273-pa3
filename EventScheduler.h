@@ -129,8 +129,7 @@ EventScheduler::getExecTime(int timeout) {
 	// NOTE: Assuming timeout is in milliseconds.
 	using namespace std::chrono;
 
-	milliseconds now = duration_cast<milliseconds>(
-		high_resolution_clock::now().time_since_epoch());
+	milliseconds now = getNow();
 
 	milliseconds execTime = now + milliseconds(timeout);
 
@@ -138,6 +137,12 @@ EventScheduler::getExecTime(int timeout) {
 	// << "Will execute in " << (execTime-now).count() << endl;
 
 	return execTime;
+}
+
+chrono::milliseconds
+getNow() {
+	return duration_cast<milliseconds>(
+		high_resolution_clock::now().time_since_epoch());
 }
 
 void
