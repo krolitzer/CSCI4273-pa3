@@ -12,7 +12,7 @@
 #include <ctime>
 #include <chrono>
 #include <vector>
-#include "ThreadPool.h"
+// #include "ThreadPool.h"
 
 using namespace std;
 /** 
@@ -69,7 +69,7 @@ private:
 	
 	chrono::milliseconds getExecTime(int timeout);
 	void executeEvents();
-	ThreadPool tp;
+	
 };
 
 
@@ -78,8 +78,7 @@ private:
 EventScheduler::EventScheduler(size_t maxEvents) {
 	max_events = maxEvents;
 	event_num = 0;
-	tp = new ThreadPool(maxEvents);
-	cout << "Scheduler created with max " << max_events << " events." << endl;
+	cout << "EventScheduler created with max " << max_events << " events." << endl;
 }
 
 EventScheduler::~EventScheduler() {
@@ -126,12 +125,16 @@ EventScheduler::eventCancel(int eventID) {
 
 chrono::milliseconds
 EventScheduler::getExecTime(int timeout) {
-	// NOTE: Assuming timeout is in seconds.
+	// NOTE: Assuming timeout is in milliseconds.
 	using namespace std::chrono;
 
 	milliseconds now = duration_cast<milliseconds>(
 		high_resolution_clock::now().time_since_epoch());
-	milliseconds execTime = now + seconds(timeout);
+
+	milliseconds execTime = now + milliseconds(timeout);
+
+	cout << "Event scheduled with time " << now.count() << " and execution time " << execTime.count() << endl
+	<< "Will execute in " << (execTime-now).count() << endl;
 
 	return execTime;
 }
