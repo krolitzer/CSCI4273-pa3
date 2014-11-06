@@ -12,6 +12,7 @@
 #include <ctime>
 #include <chrono>
 #include <vector>
+#include "ThreadPool.h"
 
 using namespace std;
 /** 
@@ -68,6 +69,7 @@ private:
 	
 	chrono::milliseconds getExecTime(int timeout);
 	void executeEvents();
+	ThreadPool tp;
 };
 
 
@@ -76,12 +78,12 @@ private:
 EventScheduler::EventScheduler(size_t maxEvents) {
 	max_events = maxEvents;
 	event_num = 0;
+	tp = new ThreadPool(maxEvents);
 	cout << "Scheduler created with max " << max_events << " events." << endl;
 }
 
 EventScheduler::~EventScheduler() {
-	// delete eventFunctionMap;
-	// delete functionQueue;
+
 }
 
 int 

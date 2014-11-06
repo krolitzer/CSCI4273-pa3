@@ -61,7 +61,7 @@ private:
 	char *new_msg_content;
 	char *stripped_content;
 	
-        if ((msglen < len) || (len == 0)) return NULL;
+    if ((msglen < len) || (len == 0)) return NULL;
 
 	new_msg_content = new char[msglen - len];
 	stripped_content = new char[len];
