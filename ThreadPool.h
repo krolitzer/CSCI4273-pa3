@@ -20,7 +20,7 @@ class ThreadPool
 		ThreadPool( );
 	    ThreadPool(size_t threadCount);
 	    ~ThreadPool( );
-	    int dispatch_thread(void* dispatch_function(void*), void *arg);
+	    int dispatch_thread(void dispatch_function(void*), void *arg);
 	    bool thread_avail( );
 
 	private:
@@ -56,7 +56,7 @@ ThreadPool::~ThreadPool( )
 }
 
 int 
-ThreadPool::dispatch_thread(void* dispatch_function(void*), void *arg)
+ThreadPool::dispatch_thread(void dispatch_function(void*), void *arg)
 {
 	int rc; // Used for return code
 
@@ -68,7 +68,7 @@ ThreadPool::dispatch_thread(void* dispatch_function(void*), void *arg)
 			if (m_ThreadStatus[m_ThreadPool[i]])
 			{
 				m_ThreadStatus[m_ThreadPool[i]]	= false;
-				rc = pthread_create(&(m_ThreadPool[i]), NULL, dispatch_function, arg);
+				//rc = pthread_create(&(m_ThreadPool[i]), NULL, **dispatch_function, arg);
 			}
 
 			if(rc)
