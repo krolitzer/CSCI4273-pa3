@@ -6,12 +6,14 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <iostream>
 #include <map>
 #include <queue>
 #include <ctime>
 #include <chrono>
 #include <vector>
+#include <pthread.h>
 #include "ThreadPool.h"
 
 using namespace std;
@@ -67,9 +69,11 @@ private:
 	typedef priority_queue<EventTime, vector<EventTime>, CompareEventTime> functionQueue;
 	eventFunctionMap efMap;
 	functionQueue fQueue;
-	
+	// ThreadPool *worker;
+	pthread_t *thread;
+
 	long getExecTime(int timeout);
-	void executeEvents();
+	void* executeEvents();
 	long getNow();
 	
 };
@@ -80,6 +84,7 @@ private:
 EventScheduler::EventScheduler(size_t maxEvents) {
 	max_events = maxEvents;
 	event_num = 0;
+	//pthread_create(&thread, NULL, executeEvents, NULL);
 	cout << "EventScheduler created with max " << max_events << " events." << endl;
 }
 
@@ -92,7 +97,6 @@ EventScheduler::eventSchedule(void evFunction(void *), void* arg, int timeout) {
 	// Decide if timeout is seconds or milliseconds or something else
 	// Internally will handle time as milli seconds.
 	int thisEvent = event_num;
-	
 	// Record the function to call plus the arg
 	FunctionInfo f; 
 	f.function = evFunction;
@@ -147,31 +151,42 @@ EventScheduler::getNow() {
 		high_resolution_clock::now().time_since_epoch()).count();
 }
 
-void
+void *
 EventScheduler::executeEvents() {
 	// A seperate thread is running this function
 	// Check the queue and run functions when the time is up.
 	// Note, if eventID is not found in the map, 
 	// Then it must have been cancelled, so move on.
-	
+	cout << "Thread to start executing stuff!!" << endl;
 	ThreadPool th(max_events);
-
-	long countDown = fQueue.top().execTime - getNow(); 		
-	if(countDown <= 0) {
+	// Look into pthread_conditional thing.
+	while(true) {
+		long countDown = 100;
 		
-		// grab function information from the map
-		int id = fQueue.top().eventID;
-		eventFunctionMap::iterator it = efMap.find(id);
+		if(!fQueue.empty()) {
+			countDown = fQueue.top().execTime - getNow();
+		} 		
 		
-		if(it == efMap.end()) {
-			//didn't find the element
-			cout << "Event confirmed cancelled" << endl;
-			fQueue.pop();
-		} else {
-			// execute the function
-			th.dispatch_thread(it->first, (void *)&it->second);
+		if(countDown <= 0) {
+			
+			// grab function information from the map
+			int id = fQueue.top().eventID;
+			eventFunctionMap::iterator it = efMap.find(id);
+			
+			if(it == efMap.end()) {
+				//didn't find the element
+				cout << "Event confirmed cancelled" << endl;
+				fQueue.pop();
+			} else {
+				// execute the function
+				th.dispatch_thread(it->second.function, it->second.arg);
+				fQueue.pop();
+			}
 		}
+		// Still trying to find a reasonable amount of time to sleep
+		usleep(countDown/2);
 	}
+	return NULL;
 }
 
 void
