@@ -12,7 +12,7 @@
 #include <ctime>
 #include <chrono>
 #include <vector>
-// #include "ThreadPool.h"
+#include "ThreadPool.h"
 
 using namespace std;
 /** 
@@ -154,23 +154,22 @@ EventScheduler::executeEvents() {
 	// Note, if eventID is not found in the map, 
 	// Then it must have been cancelled, so move on.
 	
-	//ThreadPool th(max_events);
-	long countDown = fQueue.top().execTime - getNow(); 
-		
+	ThreadPool th(max_events);
+
+	long countDown = fQueue.top().execTime - getNow(); 		
 	if(countDown <= 0) {
 		
 		// grab function information from the map
 		int id = fQueue.top().eventID;
-		eventFunctionMap::iterator mapIt;
-		mapIt = efMap.find(id);
+		eventFunctionMap::iterator it = efMap.find(id);
 		
-		if(mapIt == efMap.end()) {
+		if(it == efMap.end()) {
 			//didn't find the element
 			cout << "Event confirmed cancelled" << endl;
 			fQueue.pop();
 		} else {
 			// execute the function
-			//th.dispatch_thread(it->first, (void *)&it->second);
+			th.dispatch_thread(it->first, (void *)&it->second);
 		}
 	}
 }
