@@ -46,7 +46,8 @@ public:
 	~EventScheduler();
 	int eventSchedule(void evFunction(void *), void* arg, int timeout);
 	void eventCancel(int eventID);
-	
+	void printQ();
+	void dumpQ();
 	
 private:
 	int num_events;
@@ -89,7 +90,6 @@ int
 EventScheduler::eventSchedule(void evFunction(void *), void* arg, int timeout) {
 	// Decide if timeout is seconds or milliseconds or something else
 	// Internally will handle time as milli seconds.
-	cout << "Scheduling the function with timeout " << timeout << endl;
 	int thisEvent = event_num;
 	
 	// Record the function to call plus the arg
@@ -106,6 +106,7 @@ EventScheduler::eventSchedule(void evFunction(void *), void* arg, int timeout) {
 	efMap.insert(eventFunctionMap::value_type(thisEvent, f));
 	// Schedule in priority queue
 	fQueue.push(e);
+	cout << "Scheduled function with timeout " << timeout << " event id = " << event_num << endl;
 
 	event_num++;
 	return thisEvent;
@@ -133,8 +134,8 @@ EventScheduler::getExecTime(int timeout) {
 
 	milliseconds execTime = now + milliseconds(timeout);
 
-	cout << "Event scheduled with time " << now.count() << " and execution time " << execTime.count() << endl
-	<< "Will execute in " << (execTime-now).count() << endl;
+	// cout << "Event scheduled with time " << now.count() << " and execution time " << execTime.count() << endl
+	// << "Will execute in " << (execTime-now).count() << endl;
 
 	return execTime;
 }
@@ -145,5 +146,28 @@ EventScheduler::executeEvents() {
 	// and runs functions when the time is up.
 	// Note, if eventID is not found in the map, 
 	// Then it must have been cancelled, so move on.
+	/*
+		make thread
+		check (now - exectime)
+			if time <= 0
+				exectue
+
+	*/
 }
 
+void
+EventScheduler::dumpQ() {
+	cout << "-------------------Queue Dump-----------" << endl;
+
+	while(!fQueue.empty()) {
+		cout << fQueue.top().execTime.count() << "  " << fQueue.top().eventID << endl;
+		fQueue.pop();
+	}
+
+	cout << "---------------End Queue Dump-----------" << endl;
+}
+
+void
+printMap() {
+	
+}
