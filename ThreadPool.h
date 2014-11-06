@@ -20,7 +20,7 @@ class ThreadPool
 		ThreadPool( );
 	    ThreadPool(size_t threadCount);
 	    ~ThreadPool( );
-	    int dispatch_thread(void* dispatch_function(void*), void *arg);
+	    int dispatch_thread(void dispatch_function(void*), void *arg);
 	    bool thread_avail( );
 
 	private:
@@ -29,6 +29,12 @@ class ThreadPool
     	map<pthread_t, pthread_mutex_t> m_ThreadMutexes;	// map of thread ID to associated mutex
     	map<pthread_t, bool>			m_ThreadStatus;		// map of thread ID to availibility boolean
 
+    	// work structure (function and arg pointer)
+    	typedef struct
+    	{
+	    	void (*dispatch_function)(void*);
+	    	void* arg;
+		} work_t;
 
     	//Thread struct
 
@@ -56,7 +62,7 @@ ThreadPool::~ThreadPool( )
 }
 
 int 
-ThreadPool::dispatch_thread(void* dispatch_function(void*), void *arg)
+ThreadPool::dispatch_thread(void dispatch_function(void*), void *arg)
 {
 	int rc; // Used for return code
 
@@ -68,7 +74,7 @@ ThreadPool::dispatch_thread(void* dispatch_function(void*), void *arg)
 			if (m_ThreadStatus[m_ThreadPool[i]])
 			{
 				m_ThreadStatus[m_ThreadPool[i]]	= false;
-				rc = pthread_create(&(m_ThreadPool[i]), NULL, dispatch_function, arg);
+				//rc = pthread_create(&(m_ThreadPool[i]), NULL, dispatch_function, arg);
 			}
 
 			if(rc)
@@ -124,6 +130,11 @@ ThreadPool::initialize_pool( )
 
 		// Add mapping of thread to availability status
 		m_ThreadStatus[thread] = true;
+
+		// Create a null work struct
+		work_t work;
+
+		pthread_create(&thread, NULL, work->dispatch_function, work->arg);
 	}
 
 }
