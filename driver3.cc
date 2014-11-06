@@ -7,13 +7,17 @@
 
 using namespace std;
 
-#include "message.h"
+#include "Message.h"
 
 int
 main ( )
 {
     char *b1 = new char[100];
-    for (int i = 0; i < 100; i++) b1[i] = 'a';
+    char *b1_dup = new char[100];
+    for (int i = 0; i < 100; i++) {
+        b1[i] = 'a';
+        b1_dup[i] = 'a';
+    }
 
     char *h1 = new char[5];
     for (int i = 0; i < 5; i++) h1[i] = 'h';

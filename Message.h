@@ -33,9 +33,10 @@ private:
     Message::Message(char* msg, size_t len)
     {
 	msglen = len;
-	msg_content = new char[len];
+	msg_content = msg;
+	// msg_content = new char[len];
 	// could make this point to msg
-	memcpy(msg_content, msg, len);
+	// memcpy(msg_content, msg, len);
     }
 
     Message::~Message( )
