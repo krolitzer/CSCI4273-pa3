@@ -58,17 +58,27 @@ ThreadPool::~ThreadPool( )
 int 
 ThreadPool::dispatch_thread(void dispatch_function(void*), void *arg)
 {
+	int rc; // Used for return code
+
+	// Check if any threads are available
 	if(thread_avail())
 	{
-		int rc; // Used for return code
+		for (int i = 0; i < m_PoolSize; i++)
+		{
+			if (m_ThreadStatus[m_ThreadPool[i]])
+			{
+				m_ThreadStatus[m_ThreadPool[i]]	= false;
+				//rc = pthread_create(&(m_ThreadPool[i]), NULL, **dispatch_function, arg);
+			}
 
-		// m_ThreadStatus[i] = 1;
-		//rc = pthread_create(&(m_ThreadPool[i]), NULL, dispatch_function, arg);
-		if(rc){
-		    printf("ERROR; return code from pthread_create() is %d\n", rc);
-		    exit(EXIT_FAILURE);
+			if(rc)
+			{
+		    	printf("ERROR: return code from pthread_create() is %d\n", rc);
+		    	m_ThreadStatus[m_ThreadPool[i]]	= true;
+		    	exit(EXIT_FAILURE);
+			}
 		}
-		// m_ThreadStatus[i] = 0;
+		
 	}
 }
 
