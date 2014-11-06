@@ -32,14 +32,15 @@ class ThreadPool
     	// work structure (function and arg pointer)
     	typedef struct
     	{
-	    	void (*dispatch_function)(void*);
+	    	void* (*dispatch_function)(void*);
 	    	void* arg;
 		} work_t;
 
     	//Thread struct
 
-    	void initialize_pool( );
-    	void free_thread( /*pointer to thread struct*/);
+    	void initialize_pool( );	
+    	static void* start_thread(void* arg);
+
 };
 
 ThreadPool::ThreadPool( )
@@ -134,14 +135,19 @@ ThreadPool::initialize_pool( )
 
 		// Create a null work struct
 		work_t work;
+		work.dispatch_function = ThreadPool::start_thread;
+		work.arg = NULL;
 
-		pthread_create(&thread, NULL, work->dispatch_function, work->arg);
+		pthread_create(&thread, NULL, work.dispatch_function, work.arg);
 	}
 
 }
 
-void
-ThreadPool::free_thread( )
+void*
+ThreadPool::start_thread(void* arg)
 {
+ //while
+	//do work
 
+	return NULL;
 }
