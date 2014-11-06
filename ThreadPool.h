@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <pthread.h>
+#include <map>
 
 #define DEFAULT_THREAD_COUNT 10
 
@@ -23,9 +24,10 @@ class ThreadPool
 	    bool thread_avail( );
 
 	private:
-    	size_t m_PoolSize;
-    	pthread_t* m_ThreadPool;
-    	int* m_ThreadStatus;
+    	size_t 							m_PoolSize;			// the number of threads
+    	pthread_t* 						m_ThreadPool;		// array of threads
+    	map<pthread_t, pthread_mutex_t> m_ThreadMutexes;	// map of thread ID to associated mutex
+    	map<pthread_t, bool>			m_ThreadStatus;		// map of thread ID to availibility boolean
 
 
     	//Thread struct
@@ -50,8 +52,7 @@ ThreadPool::ThreadPool(size_t threadCount)
 
 ThreadPool::~ThreadPool( )
 {
-    delete m_ThreadPool;
-    delete m_ThreadStatus;
+    delete[] m_ThreadPool;
 }
 
 int 
@@ -89,7 +90,32 @@ void
 ThreadPool::initialize_pool( )
 {
 	m_ThreadPool = new pthread_t[m_PoolSize];
-	m_ThreadStatus = new int[m_PoolSize];
+
+	for (int i = 0; i < m_PoolSize; i++)
+	{
+		// Declare the mutex
+		pthread_mutex_t mutex;
+
+		// Initialize each mutex -> unlocked
+		if(pthread_mutex_init(&mutex, NULL))
+		{
+			printf("ERROR: Failed to initialize mutex.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		// Declare the thread
+		pthread_t thread;
+		
+		// Add the thread to the array
+		m_ThreadPool[i] = thread;
+
+		// Add mapping of thread to mutex
+		m_ThreadMutexes[thread] = mutex;
+
+		// Add mapping of thread to availability status
+		m_ThreadStatus[thread] = true;
+	}
+
 }
 
 void
