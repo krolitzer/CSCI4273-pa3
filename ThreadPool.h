@@ -77,7 +77,7 @@ ThreadPool::thread_avail( )
 {
 	for(int i = 0; i < m_PoolSize; i++)	
 	{
-		if(m_ThreadStatus[i] == 0)
+		if(m_ThreadStatus[m_ThreadPool[i]])
 			return true;
 	}
 
