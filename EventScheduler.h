@@ -22,7 +22,7 @@ using namespace std;
 struct EventTime
 {
 	int eventID;
-	chrono::milliseconds execTime;
+	long execTime;
 };
 	
 /** Making new class for priority queue compatability */
@@ -68,8 +68,9 @@ private:
 	eventFunctionMap efMap;
 	functionQueue fQueue;
 	
-	chrono::milliseconds getExecTime(int timeout);
+	long getExecTime(int timeout);
 	void executeEvents();
+	long getNow();
 	
 };
 
@@ -124,14 +125,14 @@ EventScheduler::eventCancel(int eventID) {
 	cout << "Cancelled event " << eventID << endl;
 }
 
-chrono::milliseconds
+long
 EventScheduler::getExecTime(int timeout) {
 	// NOTE: Assuming timeout is in milliseconds.
 	using namespace std::chrono;
 
-	milliseconds now = getNow();
+	long now = getNow();
 
-	milliseconds execTime = now + milliseconds(timeout);
+	long execTime = now + milliseconds(timeout).count();
 
 	// cout << "Event scheduled with time " << now.count() << " and execution time " << execTime.count() << endl
 	// << "Will execute in " << (execTime-now).count() << endl;
@@ -139,25 +140,39 @@ EventScheduler::getExecTime(int timeout) {
 	return execTime;
 }
 
-chrono::milliseconds
-getNow() {
+long
+EventScheduler::getNow() {
+	using namespace std::chrono;
 	return duration_cast<milliseconds>(
-		high_resolution_clock::now().time_since_epoch());
+		high_resolution_clock::now().time_since_epoch()).count();
 }
 
 void
 EventScheduler::executeEvents() {
-	// Spawn thread that checks the queue 
-	// and runs functions when the time is up.
+	// A seperate thread is running this function
+	// Check the queue and run functions when the time is up.
 	// Note, if eventID is not found in the map, 
 	// Then it must have been cancelled, so move on.
-	/*
-		make thread
-		check (now - exectime)
-			if time <= 0
-				exectue
-
-	*/
+	
+	//ThreadPool th(max_events);
+	long countDown = fQueue.top().execTime - getNow(); 
+		
+	if(countDown <= 0) {
+		
+		// grab function information from the map
+		int id = fQueue.top().eventID;
+		eventFunctionMap::iterator mapIt;
+		mapIt = efMap.find(id);
+		
+		if(mapIt == efMap.end()) {
+			//didn't find the element
+			cout << "Event confirmed cancelled" << endl;
+			fQueue.pop();
+		} else {
+			// execute the function
+			//th.dispatch_thread(it->first, (void *)&it->second);
+		}
+	}
 }
 
 void
@@ -165,7 +180,7 @@ EventScheduler::dumpQ() {
 	cout << "-------------------Queue Dump-----------" << endl;
 
 	while(!fQueue.empty()) {
-		cout << fQueue.top().execTime.count() << "  " << fQueue.top().eventID << endl;
+		cout << fQueue.top().execTime << "  " << fQueue.top().eventID << endl;
 		fQueue.pop();
 	}
 
