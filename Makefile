@@ -5,7 +5,7 @@
 CC = g++
 CCFLAGS = -std=gnu++11 -pthread
 
-all: driver1Make driver2Make driver3Make
+all: driver1Make driver2Make driver3Make threadPoolMake
 
 driver1Make: driver1.cc
 	$(CC) $(CCFLAGS) -o driver1 driver1.cc -I.

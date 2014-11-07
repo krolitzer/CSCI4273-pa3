@@ -38,9 +38,11 @@ class ThreadPool
     	map<pthread_t, pthread_mutex_t> m_ThreadMutexes;	// map of thread ID to associated mutex
     	map<pthread_t, bool>			m_ThreadStatus;		// map of thread ID to availibility boolean
 	   	queue<work_t*>					m_WorkQueue;		// queue that holds pending work
+	   	pthread_mutex_t 				m_QueueMutex;		// mutex to protect m_WorkQueue
+	   	bool 							m_IsWorkDone;		// boolean to signal all threads to exit
 
     	void initialize_pool( );	
-    	static void* start_thread();
+    	void* start_thread();
     	static void* work_helper(void *func) 
     	{
 			return ((ThreadPool*)func)->start_thread();
@@ -64,7 +66,16 @@ ThreadPool::ThreadPool(size_t threadCount)
 
 ThreadPool::~ThreadPool( )
 {
+	//while(!m_WorkQueue.empty());
+
+	m_IsWorkDone = true;
+
+	for (int i = 0; i < m_PoolSize; i++)
+		pthread_join(m_ThreadPool[i], NULL);
+
     delete[] m_ThreadPool;
+
+    pthread_mutex_destroy(&m_QueueMutex);
 }
 
 int 
@@ -114,7 +125,11 @@ ThreadPool::thread_avail( )
 void
 ThreadPool::initialize_pool( )
 {
+	m_IsWorkDone = false;
+
 	m_ThreadPool = new pthread_t[m_PoolSize];
+
+	pthread_mutex_init(&m_QueueMutex, NULL);
 
 	for (int i = 0; i < m_PoolSize; i++)
 	{
@@ -140,11 +155,7 @@ ThreadPool::initialize_pool( )
 		// Add mapping of thread to availability status
 		m_ThreadStatus[thread] = true;
 
-		// Create a null work struct
-		/*work_t* work;
-		work->dispatch_function = work_helper;
-		work->arg = NULL;*/
-
+		// create the thread and send it to wait for work
 		pthread_create(&thread, NULL, work_helper, this);
 	}
 
@@ -153,8 +164,39 @@ ThreadPool::initialize_pool( )
 void*
 ThreadPool::start_thread()
 {
- //while
-	//do work
+	while(1)
+	{
+		// Try to lock the queue mutex
+		// This will block if it's already locked and will
+		// wakeup once it's available, then execute the else{}
+		if (pthread_mutex_trylock(&m_QueueMutex)) { }
+		else
+		{
+			void (*dispatch)(void*);
+			work_t *newWork;
+			
+			// Check if there is work to do
+			if(m_WorkQueue.size() > 0)
+			{
+				// Get new work at the front of the queue and remove it
+				newWork = m_WorkQueue.front();
+				m_WorkQueue.pop();
+
+				// "Pull out" the work function and execute it
+				dispatch = newWork->dispatch_function;
+				dispatch(newWork->arg);
+
+				// Delete the struct now that we're done
+				delete newWork;
+			}
+
+			// Release the mutex for the queue
+			pthread_mutex_unlock(&m_QueueMutex);
+		}
+
+		if (m_IsWorkDone && m_WorkQueue.empty())
+			pthread_exit(NULL);
+	}
 
 	return NULL;
 }
