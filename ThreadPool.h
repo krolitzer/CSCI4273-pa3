@@ -172,6 +172,7 @@ ThreadPool::start_thread()
 		if (pthread_mutex_trylock(&m_QueueMutex)) { }
 		else
 		{
+			m_ThreadStatus[pthread_self()] = false;
 			void (*dispatch)(void*);
 			work_t *newWork;
 			
@@ -190,12 +191,16 @@ ThreadPool::start_thread()
 				delete newWork;
 			}
 
-			// Release the mutex for the queue
 			pthread_mutex_unlock(&m_QueueMutex);
 		}
 
+		
+
 		if (m_IsWorkDone && m_WorkQueue.empty())
 			pthread_exit(NULL);
+
+
+		m_ThreadStatus[pthread_self()] = true;
 	}
 
 	return NULL;
