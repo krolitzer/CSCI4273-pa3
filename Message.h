@@ -41,7 +41,7 @@ private:
 
     Message::~Message( )
     {
-            delete msg_content;
+        delete msg_content;
     }
 
     void Message::msgAddHdr(char *hdr, size_t length) {

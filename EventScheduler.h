@@ -69,12 +69,17 @@ private:
 	typedef priority_queue<EventTime, vector<EventTime>, CompareEventTime> functionQueue;
 	eventFunctionMap efMap;
 	functionQueue fQueue;
-	// ThreadPool *worker;
-	pthread_t *thread;
+	
+	pthread_t thread;
+	pthread_mutex_t queue_mutex;
 
 	long getExecTime(int timeout);
-	void* executeEvents();
+	void* executeEvents(void);
 	long getNow();
+
+	static void *work_helper(void *instance) {
+		return ((EventScheduler*)instance)->executeEvents();
+	}
 	
 };
 
@@ -84,12 +89,15 @@ private:
 EventScheduler::EventScheduler(size_t maxEvents) {
 	max_events = maxEvents;
 	event_num = 0;
-	//pthread_create(&thread, NULL, executeEvents, NULL);
+	pthread_mutex_init(&queue_mutex, NULL);
+	pthread_create(&thread, NULL, work_helper, this);
 	cout << "EventScheduler created with max " << max_events << " events." << endl;
 }
 
 EventScheduler::~EventScheduler() {
-
+	while(!fQueue.empty()) {}
+	pthread_join(thread, NULL);
+	
 }
 
 int 
@@ -107,10 +115,15 @@ EventScheduler::eventSchedule(void evFunction(void *), void* arg, int timeout) {
 	e.eventID = thisEvent;
 	e.execTime = getExecTime(timeout);
 
+	if( pthread_mutex_lock(&queue_mutex) ) {
+		fprintf(stderr, "A mutex error occurred");
+	}
 	// Store info in map
 	efMap.insert(eventFunctionMap::value_type(thisEvent, f));
 	// Schedule in priority queue
 	fQueue.push(e);
+	pthread_mutex_unlock(&queue_mutex);
+
 	cout << "Scheduled function with timeout " << timeout << " event id = " << event_num << endl;
 
 	event_num++;
@@ -152,17 +165,18 @@ EventScheduler::getNow() {
 }
 
 void *
-EventScheduler::executeEvents() {
+EventScheduler::executeEvents(void) {
 	// A seperate thread is running this function
 	// Check the queue and run functions when the time is up.
 	// Note, if eventID is not found in the map, 
 	// Then it must have been cancelled, so move on.
+
 	cout << "Thread to start executing stuff!!" << endl;
-	ThreadPool th(max_events);
+	ThreadPool tp(max_events);
 	// Look into pthread_conditional thing.
 	while(true) {
 		long countDown = 100;
-		
+
 		if(!fQueue.empty()) {
 			countDown = fQueue.top().execTime - getNow();
 		} 		
@@ -177,10 +191,13 @@ EventScheduler::executeEvents() {
 				//didn't find the element
 				cout << "Event confirmed cancelled" << endl;
 				fQueue.pop();
+				efMap.erase(id);
 			} else {
-				// execute the function
-				th.dispatch_thread(it->second.function, it->second.arg);
+				// execute the function, tp handles thread availability
+				tp.dispatch_thread(it->second.function, it->second.arg);
+				cout << "Dispached thead for event " << id << endl;
 				fQueue.pop();
+				efMap.erase(id);
 			}
 		}
 		// Still trying to find a reasonable amount of time to sleep
