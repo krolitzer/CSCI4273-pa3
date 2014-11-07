@@ -37,11 +37,11 @@ class ThreadPool
     	pthread_t* 						m_ThreadPool;		// array of threads
     	map<pthread_t, pthread_mutex_t> m_ThreadMutexes;	// map of thread ID to associated mutex
     	map<pthread_t, bool>			m_ThreadStatus;		// map of thread ID to availibility boolean
-	   	queue<work_t>					m_WorkQueue;		// queue that holds pending work
+	   	queue<work_t*>					m_WorkQueue;		// queue that holds pending work
 
     	void initialize_pool( );	
-    	static void* start_thread(void* arg);
-    	static void *work_helper(void *func) 
+    	static void* start_thread();
+    	static void* work_helper(void *func) 
     	{
 			return ((ThreadPool*)func)->start_thread();
 		}
@@ -70,11 +70,13 @@ ThreadPool::~ThreadPool( )
 int 
 ThreadPool::dispatch_thread(void dispatch_function(void*), void *arg)
 {
-	work_t newWork;
+	work_t* newWork = new work_t;
+	newWork->dispatch_function = dispatch_function;
+	newWork->arg = arg;
 
-	newWork.dispatch_function = dispatch_function;
-	newWork.arg = arg;
+	m_WorkQueue.push(newWork);
 
+	return 0;
 	/*int rc; // Used for return code
 
 	for (int i = 0; i < m_PoolSize; i++)
@@ -139,17 +141,17 @@ ThreadPool::initialize_pool( )
 		m_ThreadStatus[thread] = true;
 
 		// Create a null work struct
-		work_t work;
-		work.dispatch_function = ThreadPool::start_thread;
-		work.arg = NULL;
+		/*work_t* work;
+		work->dispatch_function = work_helper;
+		work->arg = NULL;*/
 
-		pthread_create(&thread, NULL, work.dispatch_function, work.arg);
+		pthread_create(&thread, NULL, work_helper, this);
 	}
 
 }
 
 void*
-ThreadPool::start_thread(void* arg)
+ThreadPool::start_thread()
 {
  //while
 	//do work

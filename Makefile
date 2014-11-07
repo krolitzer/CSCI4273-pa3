@@ -16,5 +16,8 @@ driver2Make: driver2.cc
 driver3Make: driver3.cc
 	$(CC) $(CCFLAGS) -o driver3 driver3.cc -I.
 
+threadPoolMake: ThreadPool.h
+	$(CC) $(CCFLAGS) -o ThreadPool ThreadPool.h 
+
 clean: 
-	rm -f driver1 driver2 driver3
+	rm -f driver1 driver2 driver3 ThreadPool
