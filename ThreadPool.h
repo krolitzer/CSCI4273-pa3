@@ -9,6 +9,7 @@
 #include <iostream>
 #include <pthread.h>
 #include <map>
+#include <queue>
 
 #define DEFAULT_THREAD_COUNT 10
 
@@ -24,22 +25,26 @@ class ThreadPool
 	    bool thread_avail( );
 
 	private:
+		// work structure (function and arg pointer)
+    	typedef struct
+    	{
+	    	void (*dispatch_function)(void*);
+	    	void* arg;
+		} work_t;
+
+
     	size_t 							m_PoolSize;			// the number of threads
     	pthread_t* 						m_ThreadPool;		// array of threads
     	map<pthread_t, pthread_mutex_t> m_ThreadMutexes;	// map of thread ID to associated mutex
     	map<pthread_t, bool>			m_ThreadStatus;		// map of thread ID to availibility boolean
-
-    	// work structure (function and arg pointer)
-    	typedef struct
-    	{
-	    	void* (*dispatch_function)(void*);
-	    	void* arg;
-		} work_t;
-
-    	//Thread struct
+	   	queue<work_t>					m_WorkQueue;		// queue that holds pending work
 
     	void initialize_pool( );	
     	static void* start_thread(void* arg);
+    	static void *work_helper(void *func) 
+    	{
+			return ((ThreadPool*)func)->start_thread();
+		}
 
 };
 
@@ -65,29 +70,29 @@ ThreadPool::~ThreadPool( )
 int 
 ThreadPool::dispatch_thread(void dispatch_function(void*), void *arg)
 {
-	int rc; // Used for return code
+	work_t newWork;
 
-	// Check if any threads are available
-	if(thread_avail())
+	newWork.dispatch_function = dispatch_function;
+	newWork.arg = arg;
+
+	/*int rc; // Used for return code
+
+	for (int i = 0; i < m_PoolSize; i++)
 	{
-		for (int i = 0; i < m_PoolSize; i++)
+		if (m_ThreadStatus[m_ThreadPool[i]])
 		{
-			if (m_ThreadStatus[m_ThreadPool[i]])
-			{
-				m_ThreadStatus[m_ThreadPool[i]]	= false;
+			m_ThreadStatus[m_ThreadPool[i]]	= false;
 
-				//rc = pthread_create(&(m_ThreadPool[i]), NULL, dispatch_function, arg);
-			}
-
-			if(rc)
-			{
-		    	printf("ERROR: return code from pthread_create() is %d\n", rc);
-		    	m_ThreadStatus[m_ThreadPool[i]]	= true;
-		    	exit(EXIT_FAILURE);
-			}
+			//rc = pthread_create(&(m_ThreadPool[i]), NULL, dispatch_function, arg);
 		}
-		
-	}
+
+		if(rc)
+		{
+	    	printf("ERROR: return code from pthread_create() is %d\n", rc);
+	    	m_ThreadStatus[m_ThreadPool[i]]	= true;
+	    	exit(EXIT_FAILURE);
+		}
+	}*/
 }
 
 bool
