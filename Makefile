@@ -3,7 +3,7 @@
 #compile with -> g++ -Wall -Wextra -std=gnu++11 driver2.cc -o driver2
 
 CC = g++
-CCFLAGS = -std=gnu++11 -pthread
+CCFLAGS = -std=gnu++11 -pthread -g
 
 all: driver1Make driver2Make driver3Make threadPoolMake messageMake
 

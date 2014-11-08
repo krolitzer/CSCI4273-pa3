@@ -174,7 +174,7 @@ Message::msgSplit(Message& secondMsg, size_t len)
 			if(cumm >= len)
 		    {
 		    	int spliceLen = len-(cumm-currLen);
-		    	char* newChunk;
+		    	char* newChunk = new char[spliceLen];
 
 		    	memcpy(newChunk, m_MsgContent.front().first, spliceLen);
 
