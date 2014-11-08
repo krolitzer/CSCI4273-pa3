@@ -2,18 +2,17 @@
  * Event Schedular library for scheduling network events.
  * Chris Costello and Austin Longo
  **/
-
 #include <errno.h>
-#include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <iostream>
 #include <map>
 #include <queue>
+#include <mutex>
 #include <ctime>
 #include <chrono>
 #include <vector>
-#include <pthread.h>
+#include <sys/select.h>
 #include "ThreadPool.h"
 
 using namespace std;
@@ -24,7 +23,8 @@ using namespace std;
 struct EventTime
 {
 	int eventID;
-	long execTime;
+	long execTime; //delete this later.
+	
 };
 	
 /** Making new class for priority queue compatability */
@@ -48,8 +48,6 @@ public:
 	~EventScheduler();
 	int eventSchedule(void evFunction(void *), void* arg, int timeout);
 	void eventCancel(int eventID);
-	void printQ();
-	void dumpQ();
 	
 private:
 	int num_events;
@@ -63,6 +61,7 @@ private:
 	{
 		void (*function)(void*);
 		void* arg;
+		timeval go_time;
 	};
 	
 	typedef map<int, FunctionInfo> eventFunctionMap;
@@ -70,90 +69,87 @@ private:
 	eventFunctionMap efMap;
 	functionQueue fQueue;
 	
-	pthread_t thread;
-	pthread_mutex_t queue_mutex;
+	ThreadPool *t_pool;
+	mutex data_mutex;
 
 	long getExecTime(int timeout);
-	void* executeEvents(void);
+	static void executeEvents(void* arg);
 	long getNow();
-
-	static void *work_helper(void *instance) {
-		return ((EventScheduler*)instance)->executeEvents();
-	}
 	
 };
 
 
-
-
 EventScheduler::EventScheduler(size_t maxEvents) {
+	cout << "EventScheduler created with max " << max_events << " events." << endl;
 	max_events = maxEvents;
 	event_num = 0;
-	pthread_mutex_init(&queue_mutex, NULL);
-	pthread_create(&thread, NULL, work_helper, this);
-	cout << "EventScheduler created with max " << max_events << " events." << endl;
+	t_pool = new ThreadPool(max_events);
+	// tp->dispatch_thread(executeEvents, NULL);
 }
 
 EventScheduler::~EventScheduler() {
-	while(!fQueue.empty()) {}
-	pthread_join(thread, NULL);
-	
+	while(!fQueue.empty()) {
+		usleep(700);
+	}
+	delete t_pool;	
 }
 
 int 
 EventScheduler::eventSchedule(void evFunction(void *), void* arg, int timeout) {
-	// Decide if timeout is seconds or milliseconds or something else
-	// Internally will handle time as milli seconds.
 	int thisEvent = event_num;
+
+	// Set timeval times
+	int secs = 0;
+	int msecs = timeout * 1000;
+	while (msecs >= 1000000) {
+		msecs -= 1000000;
+		secs++;
+	}
 	// Record the function to call plus the arg
 	FunctionInfo f; 
 	f.function = evFunction;
 	f.arg = arg;
+	f.go_time = {secs, msecs};
 
 	// Record the eventID with the time to execute.
 	EventTime e;
 	e.eventID = thisEvent;
 	e.execTime = getExecTime(timeout);
 
-	if( pthread_mutex_lock(&queue_mutex) ) {
-		fprintf(stderr, "A mutex error occurred");
-	}
-	// Store info in map
+	// Store info in map and priority queue
+	data_mutex.lock();
 	efMap.insert(eventFunctionMap::value_type(thisEvent, f));
-	// Schedule in priority queue
 	fQueue.push(e);
-	pthread_mutex_unlock(&queue_mutex);
+	data_mutex.unlock();
 
 	cout << "Scheduled function with timeout " << timeout << " event id = " << event_num << endl;
-
+	t_pool->dispatch_thread(executeEvents, this);
+	
 	event_num++;
 	return thisEvent;
 }
 
 void
 EventScheduler::eventCancel(int eventID) {
-	/* This will not remove events from the queue.
+	/* This will not remove events from the queue,
+	   only the map.
 	   When the eventID is not found in the map,
 	   that item will simply get popped and the 
 	   event executer will move on. */
 	
 	// Remove entry from map
+	data_mutex.lock();
 	efMap.erase(eventID);
-	cout << "Cancelled event " << eventID << endl;
+	data_mutex.unlock();
 }
+
 
 long
 EventScheduler::getExecTime(int timeout) {
 	// NOTE: Assuming timeout is in milliseconds.
 	using namespace std::chrono;
-
 	long now = getNow();
-
 	long execTime = now + milliseconds(timeout).count();
-
-	// cout << "Event scheduled with time " << now.count() << " and execution time " << execTime.count() << endl
-	// << "Will execute in " << (execTime-now).count() << endl;
-
 	return execTime;
 }
 
@@ -164,61 +160,36 @@ EventScheduler::getNow() {
 		high_resolution_clock::now().time_since_epoch()).count();
 }
 
-void *
-EventScheduler::executeEvents(void) {
-	// A seperate thread is running this function
-	// Check the queue and run functions when the time is up.
-	// Note, if eventID is not found in the map, 
-	// Then it must have been cancelled, so move on.
-
-	cout << "Thread to start executing stuff!!" << endl;
-	ThreadPool tp(max_events);
-	// Look into pthread_conditional thing.
-	while(true) {
-		long countDown = 100;
-
-		if(!fQueue.empty()) {
-			countDown = fQueue.top().execTime - getNow();
-		} 		
-		
-		if(countDown <= 0) {
-			
-			// grab function information from the map
-			int id = fQueue.top().eventID;
-			eventFunctionMap::iterator it = efMap.find(id);
-			
-			if(it == efMap.end()) {
-				//didn't find the element
-				cout << "Event confirmed cancelled" << endl;
-				fQueue.pop();
-				efMap.erase(id);
-			} else {
-				// execute the function, tp handles thread availability
-				tp.dispatch_thread(it->second.function, it->second.arg);
-				cout << "Dispached thead for event " << id << endl;
-				fQueue.pop();
-				efMap.erase(id);
-			}
-		}
-		// Still trying to find a reasonable amount of time to sleep
-		usleep(countDown/2);
-	}
-	return NULL;
-}
-
-void
-EventScheduler::dumpQ() {
-	cout << "-------------------Queue Dump-----------" << endl;
-
-	while(!fQueue.empty()) {
-		cout << fQueue.top().execTime << "  " << fQueue.top().eventID << endl;
-		fQueue.pop();
-	}
-
-	cout << "---------------End Queue Dump-----------" << endl;
-}
-
-void
-printMap() {
+void 
+EventScheduler::executeEvents(void *arg) {
+	EventScheduler* es = (EventScheduler*) arg;
 	
+	es->data_mutex.lock();	
+	// grab top event
+	int id = es->fQueue.top().eventID;
+	eventFunctionMap::iterator it = es->efMap.find(id);
+	es->data_mutex.unlock();
+	
+	// NOTE handle case where event cancelled before got here.
+	select(0, NULL, NULL, NULL, &it->second.go_time);
+
+
+	if(it == es->efMap.end()) {
+		//didn't find the element
+		es->data_mutex.lock();
+		cout << "Event confirmed cancelled" << endl;
+		es->fQueue.pop();
+		es->efMap.erase(id);
+		es->data_mutex.unlock();
+	} else {
+		cout << "Dispached thead for event " << id << endl;
+		// execute the function
+		(*(it->second.function))(it->second.arg);
+		
+		es->data_mutex.lock();
+		es->fQueue.pop();
+		es->efMap.erase(id);
+		es->data_mutex.unlock();
+	}
 }
+
