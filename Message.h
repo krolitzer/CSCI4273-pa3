@@ -10,9 +10,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+#include <list>
+#include <utility>
+
+using namespace std;
 
 class Message
 {
+	typedef pair<char*, size_t> MsgPair;
+
 public:
    
     Message( );
@@ -26,108 +32,224 @@ public:
     void msgFlat(char *buffer);
 
 private:
-    size_t msglen;
-    char *msg_content;
+    size_t m_MsgLen;
+    list<MsgPair> m_MsgContent;
 };
 
-    Message::Message()
+Message::Message()
+{
+	m_MsgLen = 0;
+	m_MsgContent.clear();
+}
+
+Message::Message(char* msg, size_t len)
+{
+	MsgPair newMsgPair(msg, len);
+	m_MsgLen = len;
+	m_MsgContent.push_front(newMsgPair);
+}
+
+Message::~Message( )
+{
+    m_MsgContent.clear();
+}
+
+void 
+Message::msgAddHdr(char *hdr, size_t length) 
+{
+	MsgPair hdrMsgPair(hdr, length);
+	m_MsgLen += length;
+	m_MsgContent.push_front(hdrMsgPair);
+}
+
+char* 
+Message::msgStripHdr(int len)
+{
+	char *stripped_content;
+	
+    if ((m_MsgLen < len) || (len == 0)) 
+    	return NULL;
+
+    if (len == static_cast<int>(m_MsgContent.front().second))
     {
-		msglen = 0;
-		msg_content = NULL;
+    	stripped_content = m_MsgContent.front().first;
+    	m_MsgContent.pop_front();
+    	m_MsgLen -= len;
+    	return stripped_content;
+    }
+    else if (len < static_cast<int>(m_MsgContent.front().second))
+    {
+    	stripped_content = new char[len];
+
+    	memcpy(stripped_content, m_MsgContent.front().first, len);
+
+    	// strip len chars from the front
+    	for (int i = 0; i < len; i++)
+    	{
+    		m_MsgContent.front().first++;
+    		m_MsgContent.front().second--;
+    	}
+
+    	m_MsgLen -= len;
+
+    	return stripped_content;
+    }
+    // len > the first header
+    else
+    {
+    	stripped_content = new char[len];
+
+    	int cumm = 0;
+
+		while (cumm < len)			
+		{
+			int currLen = static_cast<int>(m_MsgContent.front().second);
+			// Add length of the front header
+			cumm += currLen;
+
+			// If cumm is now >= to the len, just splice this one
+			if(cumm >= len)
+		    {
+		    	int spliceLen = len-(cumm-currLen);
+
+		    	memcpy(stripped_content+(cumm-currLen), m_MsgContent.front().first, spliceLen);
+
+	    	 	// strip len chars from the front
+		    	for (int i = 0; i < spliceLen; i++)
+		    	{
+		    		m_MsgContent.front().first++;
+		    		m_MsgContent.front().second--;
+		    	}
+
+		    	break;
+		    }
+		    // Otherwise, just pull off the whole thing
+		    else
+		    {
+		    	memcpy(stripped_content+(cumm-currLen), m_MsgContent.front().first, m_MsgContent.front().second);
+		    }
+
+		    m_MsgContent.pop_front();
+		}
+
+		m_MsgLen -= len;
+
+		return stripped_content;	    	
     }
 
-    Message::Message(char* msg, size_t len)
+}
+
+int 
+Message::msgSplit(Message& secondMsg, size_t len)
+{
+	list<MsgPair> secondMsgContent;
+	list<MsgPair> tempContent;
+
+	if ((len < 0) || (len > m_MsgLen)) 
+		return 0;
+	
+	if (len == static_cast<int>(m_MsgContent.front().second))
     {
-		msglen = len;
-		msg_content = msg;
-		// msg_content = new char[len];
-		// could make this point to msg
-		// memcpy(msg_content, msg, len);
+    	tempContent.push_front(m_MsgContent.front());
+    	m_MsgContent.pop_front();
+
+    	secondMsg.m_MsgContent = m_MsgContent;
+    	secondMsg.m_MsgLen = m_MsgLen-len;
+
+    	m_MsgLen = len;
+    	m_MsgContent = tempContent;
     }
-
-    Message::~Message( )
+    else
     {
-        delete msg_content;
-    }
+    	int cumm = 0;
 
-    void Message::msgAddHdr(char *hdr, size_t length) 
-    {
-		char *new_msg_content;
-		new_msg_content = new char[msglen + length];
+		while (cumm < len)			
+		{
+			int currLen = static_cast<int>(m_MsgContent.front().second);
+			
+			// Add length of the front header
+			cumm += currLen;
 
-	    memcpy(new_msg_content, hdr, length);
-		memcpy(new_msg_content + length, msg_content, msglen);
+			// If cumm is now >= to the len, just splice this one
+			if(cumm >= len)
+		    {
+		    	int spliceLen = len-(cumm-currLen);
+		    	char* newChunk;
+
+		    	memcpy(newChunk, m_MsgContent.front().first, spliceLen);
+
+		    	MsgPair newMsgPair(newChunk, spliceLen);
+
+		    	tempContent.push_back(newMsgPair);
+
+	    	 	// strip len chars from the front
+		    	for (int i = 0; i < spliceLen; i++)
+		    	{
+		    		m_MsgContent.front().first++;
+		    		m_MsgContent.front().second--;
+		    	}
+
+		    	break;
+		    }
+		    // Otherwise, just pull off the whole thing
+		    else
+		    {
+		    	tempContent.push_back(m_MsgContent.front());
+		    	m_MsgContent.pop_front();
+
+		    	m_MsgLen -= currLen;
+		    }
+
+		}
+
+		secondMsg.m_MsgContent = m_MsgContent;
+		secondMsg.m_MsgLen = m_MsgLen-len;
 		
-		delete msg_content;
-		msg_content = new_msg_content;
-		msglen += length;
+		m_MsgLen = len;
+    	m_MsgContent = tempContent;
     }
 
-    char* 
-    Message::msgStripHdr(int len)
-    {
-		char *new_msg_content;
-		char *stripped_content;
-		
-	    if ((msglen < len) || (len == 0)) 
-	    	return NULL;
+	return 1;
+}
 
-		new_msg_content = new char[msglen - len];
-		stripped_content = new char[len];
-		memcpy(stripped_content, msg_content, len);
-		memcpy(new_msg_content, msg_content + len, msglen - len);
-		msglen -= len;
-		delete msg_content;
-		msg_content = new_msg_content;
-		return stripped_content;
-    }
+void 
+Message::msgJoin(Message& secondMsg)
+{
+	list<MsgPair> tempContent = secondMsg.m_MsgContent;
 
-    int 
-    Message::msgSplit(Message& secondMsg, size_t len)
-    {
-		char *content = msg_content;
-		size_t length = msglen;
+	while (!tempContent.empty())
+	{
+		m_MsgContent.push_back(tempContent.front());
+		tempContent.pop_front();
+	}
 
-		if ((len < 0) || (len > msglen)) 
-			return 0;
+	m_MsgLen += secondMsg.m_MsgLen;
+	
+	secondMsg.m_MsgContent.clear();
+	secondMsg.m_MsgLen = 0;
+}
 
-		msg_content = new char[len];
-		msglen = len;
-		memcpy(msg_content, content, len);
-		secondMsg.msglen = length - len;
-		secondMsg.msg_content = new char[secondMsg.msglen];
-		memcpy(secondMsg.msg_content, content + len, secondMsg.msglen);
-		delete content;
-		return 1;
-    }
+size_t 
+Message::msgLen( )
+{
+	return m_MsgLen;
+}
 
-    void 
-    Message::msgJoin(Message& secondMsg)
-    {
-		char *content = msg_content;
-		size_t length = msglen;
-		
-		msg_content = new char[msglen + secondMsg.msglen];
-		msglen += secondMsg.msglen;
-		memcpy(msg_content, content, length);
-		memcpy(msg_content + length, secondMsg.msg_content, secondMsg.msglen);
-		delete content;
-		delete secondMsg.msg_content;
-		secondMsg.msg_content = NULL;
-		secondMsg.msglen = 0;
-    }
+void 
+Message::msgFlat(char *buffer)
+{
+	//Assume that sufficient memory has been allocated in buffer
 
-    size_t 
-    Message::msgLen( )
-    {
-		return msglen;
-    }
+	list<MsgPair>::const_iterator iter = m_MsgContent.begin();
 
-    void 
-    Message::msgFlat(char *buffer)
-    {
-		//Assume that sufficient memory has been allocated in buffer
+	int cumm = 0;
 
-		memcpy(buffer, msg_content, msglen);
-    }
+	for (iter; iter != m_MsgContent.end(); ++iter)
+	{
+		memcpy(buffer+cumm, iter->first, iter->second);
+
+		cumm += iter->second;
+	}
+	
+}
 
