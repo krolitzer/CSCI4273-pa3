@@ -5,7 +5,7 @@
 CC = g++
 CCFLAGS = -std=gnu++11 -pthread -g
 
-all: driver1Make driver2Make driver3Make threadPoolMake messageMake
+all: driver1Make driver2Make driver3Make threadPoolMake messageMake eventSchedulerMake
 
 driver1Make: driver1.cc
 	$(CC) $(CCFLAGS) -o driver1 driver1.cc -I.
@@ -22,5 +22,8 @@ threadPoolMake: ThreadPool.h
 messageMake: Message.h
 	$(CC) $(CCFLAGS) -o Message Message.h 
 
+eventSchedulerMake: EventScheduler.h
+	$(CC) $(CCFLAGS) -o EventScheduler EventScheduler.h
+
 clean: 
-	rm -f driver1 driver2 driver3 ThreadPool Message
+	rm -f driver1 driver2 driver3 ThreadPool Message EventScheduler
