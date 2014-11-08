@@ -50,7 +50,6 @@ public:
 	void eventCancel(int eventID);
 	
 private:
-	int num_events;
 	int max_events;
 	int event_num;
 	// map of eventID to function to execute
