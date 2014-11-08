@@ -1,0 +1,15 @@
+Christopher Costello
+Austin Longo
+CSCI 4273 - Programming Assignment 3
+
+how to compile:
+make
+
+how to clean:
+clean
+
+To test the functionality of the programs, run 
+./driver1 -- tests ThreadPool.h
+./driver2 -- test EventScheduler.h
+./driver3 -- tests Message.h
+

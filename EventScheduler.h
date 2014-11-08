@@ -80,7 +80,7 @@ private:
 
 
 EventScheduler::EventScheduler(size_t maxEvents) {
-	cout << "EventScheduler created with max " << maxEvents << " events." << endl;
+	// cout << "EventScheduler created with max " << maxEvents << " events." << endl;
 	max_events = maxEvents;
 	event_num = 0;
 	t_pool = new ThreadPool(max_events);
@@ -123,7 +123,7 @@ EventScheduler::eventSchedule(void evFunction(void *), void* arg, int timeout) {
 	fQueue.push(e);
 	data_mutex.unlock();
 
-	cout << "Scheduled function with timeout " << timeout << " event id = " << event_num << endl;
+	// cout << "Scheduled function with timeout " << timeout << " event id = " << event_num << endl;
 	t_pool->dispatch_thread(executeEvents, this);
 	
 	event_num++;
@@ -177,12 +177,12 @@ EventScheduler::executeEvents(void *arg) {
 	if(it->second.isCancelled) {
 		//Cancelled
 		es->data_mutex.lock();
-		cout << "Event confirmed cancelled" << endl;
+		// cout << "Event confirmed cancelled" << endl;
 		es->fQueue.pop();
 		es->efMap.erase(id);
 		es->data_mutex.unlock();
 	} else {
-		cout << "Dispached thead for event " << id << endl;
+		// cout << "Dispached thead for event " << id << endl;
 		// execute the function
 		(*(it->second.function))(it->second.arg);
 		
