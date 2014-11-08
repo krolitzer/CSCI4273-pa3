@@ -70,6 +70,7 @@ Message::msgStripHdr(int len)
     if ((m_MsgLen < len) || (len == 0)) 
     	return NULL;
 
+    // if it's a perfect boundary
     if (len == static_cast<int>(m_MsgContent.front().second))
     {
     	stripped_content = m_MsgContent.front().first;
@@ -77,6 +78,7 @@ Message::msgStripHdr(int len)
     	m_MsgLen -= len;
     	return stripped_content;
     }
+    // if it wants less than the first header
     else if (len < static_cast<int>(m_MsgContent.front().second))
     {
     	stripped_content = new char[len];
@@ -94,7 +96,7 @@ Message::msgStripHdr(int len)
 
     	return stripped_content;
     }
-    // len > the first header
+    // if it wants more than the first header
     else
     {
     	stripped_content = new char[len];
@@ -148,6 +150,7 @@ Message::msgSplit(Message& secondMsg, size_t len)
 	if ((len < 0) || (len > m_MsgLen)) 
 		return 0;
 	
+	// if it's a perfect boundary
 	if (len == static_cast<int>(m_MsgContent.front().second))
     {
     	tempContent.push_front(m_MsgContent.front());
@@ -159,6 +162,7 @@ Message::msgSplit(Message& secondMsg, size_t len)
     	m_MsgLen = len;
     	m_MsgContent = tempContent;
     }
+    // not a boundary, check where to splice
     else
     {
     	int cumm = 0;
