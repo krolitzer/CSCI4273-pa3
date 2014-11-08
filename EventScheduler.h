@@ -61,6 +61,7 @@ private:
 		void (*function)(void*);
 		void* arg;
 		timeval go_time;
+		bool isCancelled;
 	};
 	
 	typedef map<int, FunctionInfo> eventFunctionMap;
@@ -79,7 +80,7 @@ private:
 
 
 EventScheduler::EventScheduler(size_t maxEvents) {
-	cout << "EventScheduler created with max " << max_events << " events." << endl;
+	cout << "EventScheduler created with max " << maxEvents << " events." << endl;
 	max_events = maxEvents;
 	event_num = 0;
 	t_pool = new ThreadPool(max_events);
@@ -109,6 +110,7 @@ EventScheduler::eventSchedule(void evFunction(void *), void* arg, int timeout) {
 	f.function = evFunction;
 	f.arg = arg;
 	f.go_time = {secs, msecs};
+	f.isCancelled = false;
 
 	// Record the eventID with the time to execute.
 	EventTime e;
@@ -138,7 +140,7 @@ EventScheduler::eventCancel(int eventID) {
 	
 	// Remove entry from map
 	data_mutex.lock();
-	efMap.erase(eventID);
+	efMap.find(eventID)->second.isCancelled = true;
 	data_mutex.unlock();
 }
 
@@ -169,12 +171,11 @@ EventScheduler::executeEvents(void *arg) {
 	eventFunctionMap::iterator it = es->efMap.find(id);
 	es->data_mutex.unlock();
 	
-	// NOTE handle case where event cancelled before got here.
 	select(0, NULL, NULL, NULL, &it->second.go_time);
 
 
-	if(it == es->efMap.end()) {
-		//didn't find the element
+	if(it->second.isCancelled) {
+		//Cancelled
 		es->data_mutex.lock();
 		cout << "Event confirmed cancelled" << endl;
 		es->fQueue.pop();
