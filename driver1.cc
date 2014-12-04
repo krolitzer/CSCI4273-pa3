@@ -33,7 +33,7 @@ main ( )
                      << max[(i*4)+j] << endl;
 			}
 		}
-		sleep(6);        
+		sleep(3);        
 	} 
 }
 

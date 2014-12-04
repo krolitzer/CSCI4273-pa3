@@ -66,8 +66,6 @@ ThreadPool::ThreadPool(size_t threadCount)
 
 ThreadPool::~ThreadPool( )
 {
-	//while(!m_WorkQueue.empty());
-
 	m_IsWorkDone = true;
 
 	for (int i = 0; i < m_PoolSize; i++)
@@ -88,24 +86,6 @@ ThreadPool::dispatch_thread(void dispatch_function(void*), void *arg)
 	m_WorkQueue.push(newWork);
 
 	return 0;
-	/*int rc; // Used for return code
-
-	for (int i = 0; i < m_PoolSize; i++)
-	{
-		if (m_ThreadStatus[m_ThreadPool[i]])
-		{
-			m_ThreadStatus[m_ThreadPool[i]]	= false;
-
-			//rc = pthread_create(&(m_ThreadPool[i]), NULL, dispatch_function, arg);
-		}
-
-		if(rc)
-		{
-	    	printf("ERROR: return code from pthread_create() is %d\n", rc);
-	    	m_ThreadStatus[m_ThreadPool[i]]	= true;
-	    	exit(EXIT_FAILURE);
-		}
-	}*/
 }
 
 bool
@@ -155,7 +135,7 @@ ThreadPool::initialize_pool( )
 		// Add mapping of thread to availability status
 		m_ThreadStatus[thread] = true;
 
-		// create the thread and send it to wait for work
+		// Create the thread and send it to wait for work
 		pthread_create(&thread, NULL, work_helper, this);
 	}
 
@@ -169,12 +149,13 @@ ThreadPool::start_thread()
 		// Try to lock the queue mutex
 		// This will block if it's already locked and will
 		// wakeup once it's available, then execute the else{}
-		if (pthread_mutex_trylock(&m_QueueMutex)) { }
+		if (pthread_mutex_lock(&m_QueueMutex)) { }
 		else
 		{
 			m_ThreadStatus[pthread_self()] = false;
 			void (*dispatch)(void*);
 			work_t *newWork;
+			bool foundWork = false;
 			
 			// Check if there is work to do
 			if(m_WorkQueue.size() > 0)
@@ -185,13 +166,20 @@ ThreadPool::start_thread()
 
 				// "Pull out" the work function and execute it
 				dispatch = newWork->dispatch_function;
+
+				foundWork = true;
+			}
+
+			pthread_mutex_unlock(&m_QueueMutex);
+
+			if (foundWork)
+			{
+				// Execute it
 				dispatch(newWork->arg);
 
 				// Delete the struct now that we're done
 				delete newWork;
 			}
-
-			pthread_mutex_unlock(&m_QueueMutex);
 		}
 
 		
